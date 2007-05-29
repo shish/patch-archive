@@ -1,0 +1,52 @@
+Index: compose.c
+===================================================================
+--- compose.c	(revision 728)
++++ compose.c	(working copy)
+@@ -449,6 +449,12 @@
+ 					     guint		 info,
+ 					     guint		 time,
+ 					     gpointer		 user_data);
++static void compose_table_drag_motion_cb (GtkWidget		*widget,
++					     GdkDragContext	*drag_context,
++					     gint		 x,
++					     gint		 y,
++					     guint		 time,
++					     gpointer		 user_data);
+ static void compose_insert_drag_received_cb (GtkWidget		*widget,
+ 					     GdkDragContext	*drag_context,
+ 					     gint		 x,
+@@ -4210,6 +4216,13 @@
+ 			 G_CALLBACK(compose_insert_drag_received_cb),
+ 			 compose);
+ 
++	/* drag & hover */
++	gtk_drag_dest_set(table, GTK_DEST_DEFAULT_MOTION, compose_drag_types,
++			  N_DRAG_TYPES, GDK_ACTION_COPY | GDK_ACTION_MOVE);
++	g_signal_connect(G_OBJECT(table), "drag-motion",
++			 G_CALLBACK(compose_table_drag_motion_cb),
++			 compose);
++
+ 	gtk_widget_show_all(vbox);
+ 
+ 	if (prefs_common.textfont) {
+@@ -6298,6 +6311,20 @@
+ 	gtk_drag_finish(drag_context, TRUE, FALSE, time);
+ }
+ 
++static void compose_table_drag_motion_cb (GtkWidget		*widget,
++		GdkDragContext	*drag_context,
++		gint		 x,
++		gint		 y,
++		guint		 time,
++		gpointer		 user_data)
++{
++	Compose *compose = (Compose *)user_data;
++	GtkItemFactory *ifactory = NULL;
++
++	ifactory = gtk_item_factory_from_widget(compose->menubar);
++	menu_set_active(ifactory, "/View/Attachment", TRUE);
++}
++
+ static void compose_insert_drag_received_cb (GtkWidget		*widget,
+ 					     GdkDragContext	*drag_context,
+ 					     gint		 x,

@@ -1,0 +1,28 @@
+Index: md5sum.c
+===================================================================
+RCS file: /cvsroot/coreutils/coreutils/src/md5sum.c,v
+retrieving revision 1.138
+diff -u -r1.138 md5sum.c
+--- md5sum.c	11 Jul 2005 18:29:44 -0000	1.138
++++ md5sum.c	18 Jul 2005 18:29:45 -0000
+@@ -615,16 +615,11 @@
+ 
+   if (do_check)
+     {
+-      if (optind + 1 < argc)
+-	{
+-	  error (0, 0, _("extra operand %s"), quote (argv[optind + 1]));
+-	  fprintf (stderr, "%s\n",
+-		   _("Only one operand may be specified when using --check."));
+-	  usage (EXIT_FAILURE);
+-	}
++      if (optind == argc)
++	argv[argc++] = "-";
+ 
+-      ok = digest_check (optind == argc ? "-" : argv[optind],
+-			 DIGEST_STREAM (algorithm));
++      for (; optind < argc; ++optind)
++        ok &= digest_check (argv[optind], DIGEST_STREAM (algorithm));
+     }
+   else
+     {

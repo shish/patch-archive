@@ -1,0 +1,2 @@
+overall rejected for lack of C++-isms, but parts were accepted
+individually (eg, many template functions -> one varargs one)

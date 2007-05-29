@@ -1,0 +1,119 @@
+Index: src/display/utils.h
+===================================================================
+--- src/display/utils.h	(revision 719)
++++ src/display/utils.h	(working copy)
+@@ -75,6 +75,10 @@
+ char*       print_status_info(char* first, char* last);
+ char*       print_status_extra(char* first, char* last, Control* c);
+ 
++char*       escape_amps(const char* string);
++int         colored_size(char *fmt, ...);
++
++
+ inline char*
+ print_buffer(char* first, char* last, const char* format) {
+   if (first >= last)
+Index: src/display/window_title.cc
+===================================================================
+--- src/display/window_title.cc	(revision 719)
++++ src/display/window_title.cc	(working copy)
+@@ -38,6 +38,7 @@
+ 
+ #include "canvas.h"
+ #include "window_title.h"
++#include "utils.h"
+ 
+ namespace display {
+ 
+@@ -51,8 +52,10 @@
+   m_slotSchedule(this, (cachedTime + rak::timer::from_seconds(1)).round_seconds());
+   m_canvas->erase();
+ 
+-  m_canvas->print(std::max(0, (m_canvas->get_width() - (int)m_title.size()) / 2 - 4), 0,
+-		  "*** %s ***", m_title.c_str());
++  char *escaped = escape_amps(m_title.c_str());
++  m_canvas->print_color(std::max(0, (m_canvas->get_width() - colored_size(escaped)) / 2 - 4), 0,
++		  "*** &bold;%s&clear; ***", escaped);
++  free(escaped);
+ }
+ 
+ }
+Index: src/display/utils.cc
+===================================================================
+--- src/display/utils.cc	(revision 719)
++++ src/display/utils.cc	(working copy)
+@@ -46,6 +46,7 @@
+ #include <torrent/rate.h>
+ #include <torrent/tracker.h>
+ #include <torrent/tracker_list.h>
++#include <stdarg.h>
+ 
+ #include "core/download.h"
+ 
+@@ -266,4 +267,66 @@
+   return first;
+ }
+ 
++//
++// return a new string with '&' replaced with "&amp;", 
++// so it gets saved during print_color
++//
++char*
++escape_amps(const char *input) {
++  unsigned int i = 0, o = 0;
++  int count = 0;
++  char *output;
++
++  for (i=0; i<strlen(input); i++) {
++    if (input[i] == '&') count++;
++  }
++
++  output = (char *)malloc(sizeof(char) * (strlen(input)+(count*4)));;
++  for (i=0; i<strlen(input); i++) {
++    if (input[i] == '&') {
++      output[o++] = '&';
++      output[o++] = 'a';
++      output[o++] = 'm';
++      output[o++] = 'p';
++      output[o++] = ';';
++    }
++    else {
++      output[o++] = input[i];
++    }
++  }
++  output[o] = '\0';
++
++  return output;
+ }
++
++//
++// return the length of a string post-colouring
++//
++int
++colored_size(char *fmt, ...) {
++  va_list fmtargs;
++  char input[1024];
++
++  va_start(fmtargs,fmt);
++  vsnprintf(input, 1024, fmt, fmtargs);
++  va_end(fmtargs);
++
++  unsigned int length = 0, i = 0, counting = 1;
++  for (i=0; i<strlen(input); i++) {
++    if (input[i] == '&') {
++      if (strncmp(input+i, "&amp;", 5) == 0) length -= 4;
++      else counting = 0;
++    }
++    else if (!counting && input[i] == ';') {
++      counting = 1;
++    }
++    else if (counting) {
++      length++;
++    }
++  }
++
++  return length;
++}
++
++
++}

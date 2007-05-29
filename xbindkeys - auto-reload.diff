@@ -1,0 +1,38 @@
+diff -u xbindkeys-1.7.3/xbindkeys.c xbindkeys-1.7.3-reloaded/xbindkeys.c
+--- xbindkeys-1.7.3/xbindkeys.c	2005-05-04 13:28:39.000000000 +0100
++++ xbindkeys-1.7.3-reloaded/xbindkeys.c	2006-12-12 05:02:49.000000000 +0000
+@@ -36,6 +36,7 @@
+ #include <libguile.h>
+ #endif
+ 
++extern char rc_file[512];
+ 
+ void end_it_all (Display * d);
+ 
+@@ -226,13 +227,26 @@
+ {
+   XEvent e;
+   int i;
++  struct stat rc_file_info;
++  time_t rc_file_changed;
+ 
+   XSetErrorHandler ((XErrorHandler) null_X_error);
+ 
++  stat(rc_file, &rc_file_info);
++  rc_file_changed = rc_file_info.st_mtime;
++
+   while (True)
+     {
+       XNextEvent (d, &e);
+ 
++      // if the rc file has been modified, reload it
++      stat(rc_file, &rc_file_info);
++      if(rc_file_info.st_mtime != rc_file_changed)
++        {
++	  get_rc_file();
++	  rc_file_changed = rc_file_info.st_mtime;
++        }
++
+       switch (e.type)
+ 	{
+ 	case KeyPress:

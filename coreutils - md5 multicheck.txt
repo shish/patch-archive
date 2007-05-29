@@ -1,0 +1,1 @@
+accepted in spirit, although syntactically changed for GNU-isms

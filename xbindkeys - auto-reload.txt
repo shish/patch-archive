@@ -1,0 +1,56 @@
+From: Philippe Brochard <hocwp@free.fr>
+To: Shish <shish@shishnet.org>
+Subject: Re: xbindkeys config reload
+Date: Thu, 14 Dec 2006 15:08:45 +0100
+Organization: GNU/Linux Home
+User-Agent: Gnus/5.110006 (No Gnus v0.6) Emacs/21.4 (gnu/linux)
+
+shish@shishnet.org writes:
+
+> I'm lazy, and "killall -HUP xbindkeys" is far too much effort -- so I
+> made xbindkeys automatically reload the config whenever it changes :)
+>
+> Patch attached, since I think it may be a useful feature that other
+> people would want~
+>
+Thanks a lot for your patch!!
+
+But I think there is a missing thing. The get_rc_file do only what it
+says : it populate the key array from the configuration file. We have
+to first ungrab all keys, then load the new configuration file (C or
+scheme) and then grab again all new keys.
+
+This can be done simply with the catch_HUP_signal function.
+So the part
+
+// if the rc file has been modified, reload it
+stat(rc_file, &rc_file_info);
+if(rc_file_info.st_mtime != rc_file_changed)
+  {
+   get_rc_file();
+   rc_file_changed = rc_file_info.st_mtime;
+  }
+
+simply become :
+
+
+// if the rc file has been modified, reload it
+stat(rc_file, &rc_file_info);
+if(rc_file_info.st_mtime != rc_file_changed)
+  {
+   catch_HUP_signal (1);    // <- here
+   rc_file_changed = rc_file_info.st_mtime;
+  }
+
+
+Again, thanks a lot, this will be in the new version of xbindkeys.
+
+
+Philippe
+
+-- 
+Philippe Brochard    <hocwp@free.fr>
+                      http://hocwp.free.fr
+
+-=-= http://www.gnu.org/home.fr.html =-=-
+

@@ -1,0 +1,84 @@
+--- clean/xclannad/xlovesys.cc	2005-04-06 06:04:06.000000000 +0100
++++ shish/xclannad/xlovesys.cc	2005-04-06 17:39:16.081412888 +0100
+@@ -1,4 +1,4 @@
+-#define ROOTPATH "/mnt/KEY/CLANNAD"
++// #define ROOTPATH "/mnt/KEY/CLANNAD"
+ // #define ROOTPATH "/home/uenok/pb"
+ #define FONT "msgothic.ttc"
+ 	/* kochi-mincho-subst.ttf あるいは -*-*-*-r-*--24-*-*-*-*-*-jisx0208.1983-* など */
+@@ -13,6 +13,7 @@
+ 
+ #include<SDL.h>
+ #include<vector>
++#include<getopt.h>
+ 
+ #include"system/file.h"
+ #include"system/system_config.h"
+@@ -24,10 +25,53 @@
+ #include"scn2k/scn2k.h"
+ #include"scn2k/scn2k_impl.h"
+ 
+-int main(void) {
++int main(int argc, char *argv[]) {
+ 	AyuSysConfig config;
++	int opt = 0, end = 0;
++	char cdromDevice[32] = "/dev/cdrom";
++	char rootPath[32]    = "/mnt/KEY/CLANNAD";
++	Uint32 videoOptions = SDL_HWSURFACE;
++	
++	while(1) {
++		opt = getopt(argc, argv, "fdh?vc:r:");
++		if(opt == -1) {break;}
++
++		switch(opt) {
++			case 'f':
++				videoOptions |= SDL_FULLSCREEN;
++				break;
++			case 'd':
++				videoOptions |= SDL_DOUBLEBUF;
++				break;
++			case 'c':
++				strncpy(cdromDevice, optarg, 31);
++				break;
++			case 'r':
++				strncpy(rootPath, optarg, 31);
++				break;
++			case 'v':
++				// FIXME: "VERSION" undeclared?
++				// printf("xclannad %s\n", VERSION);
++				printf("xclannad 0.05e\n");
++				end = 1;
++				break;
++			case 'h':
++			case '?':
++				printf("\nUsage: %s [OPTIONS]\n\n", argv[0]);
++				printf("  -f    : full screen mode\n");
++				printf("  -d    : double buffer mode\n");
++				printf("  -c    : set CD-ROM device (default /dev/cdrom)\n");
++				printf("  -r    : set root path (default /mnt/KEY/CLANNAD)\n");
++				printf("  -v    : show version and exit\n");
++				printf("  -h -? : show help and exit\n\n");
++				end = 1;
++				break;
++		}
++	}
++	if(end == 1) return 0;
++
+ 	printf("%s\n",setlocale(LC_ALL,""));
+-	file_searcher.InitRoot(ROOTPATH);
++	file_searcher.InitRoot(rootPath);
+ 	config.LoadInitFile();
+ int deal=0;
+ const int* s = config.GetParamArray("#SHAKE.001",deal);
+@@ -38,9 +82,10 @@
+ 
+ 	MuSys mu(config);
+ 	mu.InitMusic();
++	mu.SetCDROMDevice(cdromDevice);
+ 	
+ 	SDL_Init(SDL_INIT_VIDEO);
+-	SDL_SetVideoMode(640, 480, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
++	SDL_SetVideoMode(640, 480, 0, videoOptions);
+ 	// SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
+ 	{
+ 		System::Main main;
