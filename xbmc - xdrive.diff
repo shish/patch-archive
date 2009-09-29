@@ -1,0 +1,66 @@
+Index: xbmc/Application.cpp
+===================================================================
+--- xbmc/Application.cpp	(revision 23251)
++++ xbmc/Application.cpp	(working copy)
+@@ -975,6 +975,7 @@
+   CUtil::GetHomePath(strExecutablePath);
+   SetEnvironmentVariable("XBMC_HOME", strExecutablePath.c_str());
+   CSpecialProtocol::SetXBMCPath(strExecutablePath);
++  CSpecialProtocol::SetXDrivePath(strExecutablePath.Left(3));
+ 
+   if (m_bPlatformDirectories)
+   {
+Index: xbmc/FileSystem/SpecialProtocol.cpp
+===================================================================
+--- xbmc/FileSystem/SpecialProtocol.cpp	(revision 23251)
++++ xbmc/FileSystem/SpecialProtocol.cpp	(working copy)
+@@ -45,6 +45,11 @@
+   SetPath("xbmc", dir);
+ }
+ 
++void CSpecialProtocol::SetXDrivePath(const CStdString &dir)
++{
++  SetPath("xdrive", dir);
++}
++
+ void CSpecialProtocol::SetHomePath(const CStdString &dir)
+ {
+   SetPath("home", dir);
+@@ -135,6 +140,8 @@
+   // from here on, we have our "real" special paths
+   else if (RootDir.Equals("xbmc"))
+     CUtil::AddFileToFolder(GetPath("xbmc"), FileName, translatedPath);
++  else if (RootDir.Equals("xdrive"))
++    CUtil::AddFileToFolder(GetPath("xdrive"), FileName, translatedPath);
+   else if (RootDir.Equals("home"))
+     CUtil::AddFileToFolder(GetPath("home"), FileName, translatedPath);
+   else if (RootDir.Equals("userhome"))
+@@ -227,6 +234,8 @@
+       return CUtil::AddFileToFolder("special://profile/", oldPath.Mid(2));
+     else if (oldPath.Left(2).CompareNoCase("Q:") == 0)
+       return CUtil::AddFileToFolder("special://xbmc/", oldPath.Mid(2));
++    else if (oldPath.Left(2).CompareNoCase("X:") == 0)
++      return CUtil::AddFileToFolder("special://xdrive/", oldPath.Mid(2));
+     else if (oldPath.Left(2).CompareNoCase("T:") == 0)
+       return CUtil::AddFileToFolder("special://masterprofile/", oldPath.Mid(2));
+     else if (oldPath.Left(2).CompareNoCase("U:") == 0)
+@@ -240,6 +249,7 @@
+ void CSpecialProtocol::LogPaths()
+ {
+   CLog::Log(LOGNOTICE, "special://xbmc/ is mapped to: %s", GetPath("xbmc").c_str());
++  CLog::Log(LOGNOTICE, "special://xdrive/ is mapped to: %s", GetPath("xdrive").c_str());
+   CLog::Log(LOGNOTICE, "special://masterprofile/ is mapped to: %s", GetPath("masterprofile").c_str());
+   CLog::Log(LOGNOTICE, "special://home/ is mapped to: %s", GetPath("home").c_str());
+   CLog::Log(LOGNOTICE, "special://temp/ is mapped to: %s", GetPath("temp").c_str());
+Index: xbmc/FileSystem/SpecialProtocol.h
+===================================================================
+--- xbmc/FileSystem/SpecialProtocol.h	(revision 23251)
++++ xbmc/FileSystem/SpecialProtocol.h	(working copy)
+@@ -55,6 +55,7 @@
+ public:
+   static void SetProfilePath(const CStdString &path);
+   static void SetXBMCPath(const CStdString &path);
++  static void SetXDrivePath(const CStdString &path);
+   static void SetHomePath(const CStdString &path);
+   static void SetUserHomePath(const CStdString &path);
+   static void SetMasterProfilePath(const CStdString &path);
