@@ -1,0 +1,179 @@
+commit a6dfc0509bc9aff60dbe15179a3f6af1f0471574
+Author: Shish <shish@shishnet.org>
+Date:   Sun May 31 18:10:25 2009 +0100
+
+    proxy scrollback
+
+diff --git a/src/irc/proxy/dump.c b/src/irc/proxy/dump.c
+index 80fd7c2..a795184 100644
+--- a/src/irc/proxy/dump.c
++++ b/src/irc/proxy/dump.c
+@@ -30,6 +30,54 @@
+ #include "irc-nicklist.h"
+ #include "modes.h"
+ 
++static GHashTable *proxy_scrollback;
++
++static void add_to_scrollback(char *server, char *channel, char *message)
++{
++	if(!proxy_scrollback) {
++		proxy_scrollback = g_hash_table_new(&g_str_hash, &g_str_equal);
++	}
++	GHashTable *channels = g_hash_table_lookup(proxy_scrollback, server);
++
++	if(!channels) {
++		channels = g_hash_table_new_full(&g_str_hash, &g_str_equal, &g_free, NULL);
++		g_hash_table_insert(proxy_scrollback, server, channels);
++	}
++	GSList *scrollback = g_hash_table_lookup(channels, channel);
++
++	scrollback = g_slist_append(scrollback, g_strdup(message));
++	int scroll_len = settings_get_int("irssiproxy_scrollback_lines");
++	if(scroll_len < 0) scroll_len = 0;
++	while(g_slist_length(scrollback) > scroll_len) {
++		// delete first node aka oldest line of text
++		g_free(scrollback->data);
++		scrollback = g_slist_delete_link(scrollback, scrollback);
++	}
++	g_hash_table_replace(channels, g_strdup(channel), scrollback);
++}
++
++/*
++// freeing memory is left as an excercise to someone
++// who enjoys glib hashtable callbacks
++static void destroy_scrollback()
++{
++	GSList *channel, *line;
++
++	if(proxy_scrollback) {
++		for network in proxy_scrollback {
++			for channel in network {
++				for(line = channel; line != NULL; line = line->next) {
++					g_free(line->data);
++				}
++				g_slist_free(channel);
++			}
++			g_hash_table_destroy(network);
++		}
++		g_hash_table_destroy(proxy_scrollback);
++	}
++}
++*/
++
+ void proxy_outdata(CLIENT_REC *client, const char *data, ...)
+ {
+ 	va_list args;
+@@ -53,6 +101,7 @@ void proxy_outdata_all(IRC_SERVER_REC *server, const char *data, ...)
+ 	GSList *tmp;
+ 	char *str;
+ 	int len;
++	char **words;
+ 
+ 	g_return_if_fail(server != NULL);
+ 	g_return_if_fail(data != NULL);
+@@ -67,6 +116,11 @@ void proxy_outdata_all(IRC_SERVER_REC *server, const char *data, ...)
+ 		if (rec->connected && rec->server == server)
+ 			net_sendbuffer_send(rec->handle, str, len);
+ 	}
++	words = g_strsplit(str, " ", 4);
++	if(strcmp(words[1], "PRIVMSG") == 0 && words[2][0] == '#') {
++		add_to_scrollback(server->real_address, words[2], str);
++	}
++	g_strfreev(words);
+ 	g_free(str);
+ 
+ 	va_end(args);
+@@ -95,6 +149,7 @@ void proxy_outserver_all(IRC_SERVER_REC *server, const char *data, ...)
+ 	va_list args;
+ 	GSList *tmp;
+ 	char *str;
++	char **words;
+ 
+ 	g_return_if_fail(server != NULL);
+ 	g_return_if_fail(data != NULL);
+@@ -110,8 +165,14 @@ void proxy_outserver_all(IRC_SERVER_REC *server, const char *data, ...)
+ 				      settings_get_str("user_name"), str);
+ 		}
+ 	}
++	words = g_strsplit(str, " ", 3);
++	if(strcmp(words[0], "PRIVMSG") == 0 && words[1][0] == '#') {
++		add_to_scrollback(server->real_address, words[1], str);
++	}
++	g_strfreev(words);
+ 	g_free(str);
+ 
++
+ 	va_end(args);
+ }
+ 
+@@ -120,6 +181,7 @@ void proxy_outserver_all_except(CLIENT_REC *client, const char *data, ...)
+ 	va_list args;
+ 	GSList *tmp;
+ 	char *str;
++	char **words;
+ 
+ 	g_return_if_fail(client != NULL);
+ 	g_return_if_fail(data != NULL);
+@@ -136,6 +198,11 @@ void proxy_outserver_all_except(CLIENT_REC *client, const char *data, ...)
+ 				      settings_get_str("user_name"), str);
+ 		}
+ 	}
++	words = g_strsplit(str, " ", 3);
++	if(strcmp(words[0], "PRIVMSG") == 0 && words[1][0] == '#') {
++		add_to_scrollback(client->server->real_address, words[1], str);
++	}
++	g_strfreev(words);
+ 	g_free(str);
+ 
+ 	va_end(args);
+@@ -153,7 +220,8 @@ static void create_names_start(GString *str, IRC_CHANNEL_REC *channel,
+ 
+ static void dump_join(IRC_CHANNEL_REC *channel, CLIENT_REC *client)
+ {
+-	GSList *tmp, *nicks;
++	GHashTable *channels;
++	GSList *tmp, *nicks, *scrollback;
+ 	GString *str;
+ 	int first;
+ 	char *recoded;
+@@ -204,6 +272,28 @@ static void dump_join(IRC_CHANNEL_REC *channel, CLIENT_REC *client)
+ 			              client->proxy_address, client->nick,
+ 			              channel->name, channel->topic_by, channel->topic_time);
+ 	}
++
++	if(proxy_scrollback) {
++		channels = g_hash_table_lookup(proxy_scrollback, client->server->real_address);
++		if(channels) {
++			scrollback = g_hash_table_lookup(channels, channel->name);
++			if(g_slist_length(scrollback) > 0) {
++				for(tmp = scrollback; tmp != NULL; tmp = tmp->next) {
++					if(strncmp(tmp->data, "PRIVMSG", 7) == 0) {
++						// we sent this; fake someone else sending it with our nick
++						proxy_outdata(client, ":%s!%s@%s %s\n",
++						              client->nick, settings_get_str("user_name"),
++									  client->proxy_address, tmp->data);
++					}
++					else {
++						proxy_outdata(client, tmp->data);
++					}
++				}
++				proxy_outdata(client, ":IrssiProxy!proxy@%s PRIVMSG %s :---- Scrollback complete ----\n",
++				              client->proxy_address, channel->name);
++			}
++		}
++	}
+ }
+ 
+ void proxy_client_reset_nick(CLIENT_REC *client)
+diff --git a/src/irc/proxy/proxy.c b/src/irc/proxy/proxy.c
+index c8f47bd..84ddcbf 100644
+--- a/src/irc/proxy/proxy.c
++++ b/src/irc/proxy/proxy.c
+@@ -28,6 +28,7 @@ void irc_proxy_init(void)
+ 	settings_add_str("irssiproxy", "irssiproxy_ports", "");
+ 	settings_add_str("irssiproxy", "irssiproxy_password", "");
+ 	settings_add_str("irssiproxy", "irssiproxy_bind", "");
++	settings_add_int("irssiproxy", "irssiproxy_scrollback_lines", 20);
+ 
+ 	if (*settings_get_str("irssiproxy_password") == '\0') {
+ 		/* no password - bad idea! */
