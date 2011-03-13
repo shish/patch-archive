@@ -1,0 +1,52 @@
+--- clean/xclannad/window/event.cc	2005-04-06 06:04:05.000000000 +0100
++++ shish/xclannad/window/event.cc	2005-04-08 00:33:47.000000000 +0100
+@@ -31,6 +31,7 @@
+ #include<list>
+ #include<algorithm>
+ #include<iostream>
++#include<sys/stat.h>
+ 
+ using namespace std;
+ 
+@@ -194,6 +195,7 @@
+ 	void Sort(void);
+ 	void Motion(int x, int y); // mouse motion
+ 	void Press(void);
++	void TakeScreenshot(void);
+ 	iterator cur_pos;
+ 	Video* cur_item; // 現在のフォーカス位置
+ 	int cur_pressed_x, cur_pressed_y;
+@@ -347,6 +349,17 @@
+ 		mit = mit_next;
+ 	}
+ }
++void ContainerImplVideo::TakeScreenshot(void) {
++	int n=0;
++	char filename[1024];
++	struct stat buffer;
++	for(n=0; n<9999; n++) {
++		// XXX: put screenshots in a seperate dir?
++		sprintf(filename, "xclannad_%04i.bmp", n);
++		if(stat(filename, &buffer) == -1) break;
++	}
++	SDL_SaveBMP(SDL_GetVideoSurface(), filename);
++}
+ bool ContainerImplVideo::Exec(void) {
+ 	bool is_mouse_motion = false;
+ 	int motion_x = 0, motion_y = 0;
+@@ -361,6 +374,15 @@
+ 		case SDL_KEYDOWN:
+ 			if (!is_sorted) Sort();
+ 			switch(event.key.keysym.sym) {
++			case SDLK_F12:
++			case SDLK_PRINT:
++				TakeScreenshot();
++				break;
++			// Some window managers (eg enlightenment) use Alt-Enter for
++			// themselves, F11 is a good alternative
++			case SDLK_F11:
++				SDL_WM_ToggleFullScreen(SDL_GetVideoSurface());
++				break;
+ 			case SDLK_RETURN:
+ 				if (SDL_GetModState() & KMOD_ALT) {
+ 					SDL_WM_ToggleFullScreen(SDL_GetVideoSurface());

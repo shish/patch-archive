@@ -1,0 +1,92 @@
+diff -urw clean/xclannad/system/file.cc shish/xclannad/system/file.cc
+--- clean/xclannad/system/file.cc	2005-04-06 06:04:05.000000000 +0100
++++ shish/xclannad/system/file.cc	2005-04-14 23:39:32.472849976 +0100
+@@ -74,6 +74,41 @@
+ #include "file.h"
+ #include "file_impl.h"
+ 
++int read_little_endian_int(const char* buf) {
++	const unsigned char *p = (const unsigned char *) buf;
++	return (p[3] << 24) | (p[2] << 16) | (p[1] << 8) | p[0];
++}
++
++int read_little_endian_short(const char* buf) {
++	const unsigned char *p = (const unsigned char *) buf;
++	return (p[1] << 8) | p[0];
++}
++
++int write_little_endian_int(char* buf, int number) {
++	int c = read_little_endian_int(buf);
++	unsigned char *p = (unsigned char *) buf;
++	unsigned int unum = (unsigned int) number;
++	p[0] = unum & 255;
++	unum >>= 8;
++	p[1] = unum & 255;
++	unum >>= 8;
++	p[2] = unum & 255;
++	unum >>= 8;
++	p[3] = unum & 255;
++	return c;
++}
++
++int write_little_endian_short(char* buf, int number) {
++	int c = read_little_endian_short(buf);
++	unsigned char *p = (unsigned char *) buf;
++	unsigned int unum = (unsigned int) number;
++	p[0] = unum & 255;
++	unum >>= 8;
++	p[1] = unum & 255;
++	return c;
++}
++
++
+ using namespace std;
+ 
+ FILESEARCH file_searcher;
+diff -urw clean/xclannad/system/file.h shish/xclannad/system/file.h
+--- clean/xclannad/system/file.h	2005-04-06 06:04:05.000000000 +0100
++++ shish/xclannad/system/file.h	2005-04-14 23:39:58.428904056 +0100
+@@ -47,39 +47,10 @@
+ 
+ #define INT_SIZE 4
+ 
+-static int read_little_endian_int(const char* buf) {
+-	const unsigned char *p = (const unsigned char *) buf;
+-	return (p[3] << 24) | (p[2] << 16) | (p[1] << 8) | p[0];
+-}
+-
+-static int read_little_endian_short(const char* buf) {
+-	const unsigned char *p = (const unsigned char *) buf;
+-	return (p[1] << 8) | p[0];
+-}
+-
+-static int write_little_endian_int(char* buf, int number) {
+-	int c = read_little_endian_int(buf);
+-	unsigned char *p = (unsigned char *) buf;
+-	unsigned int unum = (unsigned int) number;
+-	p[0] = unum & 255;
+-	unum >>= 8;
+-	p[1] = unum & 255;
+-	unum >>= 8;
+-	p[2] = unum & 255;
+-	unum >>= 8;
+-	p[3] = unum & 255;
+-	return c;
+-}
+-
+-static int write_little_endian_short(char* buf, int number) {
+-	int c = read_little_endian_short(buf);
+-	unsigned char *p = (unsigned char *) buf;
+-	unsigned int unum = (unsigned int) number;
+-	p[0] = unum & 255;
+-	unum >>= 8;
+-	p[1] = unum & 255;
+-	return c;
+-}
++int read_little_endian_int(const char* buf);
++int read_little_endian_short(const char* buf);
++int write_little_endian_int(char* buf, int number);
++int write_little_endian_short(char* buf, int number);
+ 
+ 
+ /*********************************************

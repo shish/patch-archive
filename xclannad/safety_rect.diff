@@ -1,0 +1,22 @@
+--- /home/shish/src/key/clean/xclannad/window/surface.h	2005-04-06 06:04:05.000000000 +0100
++++ /home/shish/src/key/shish/xclannad/window/surface.h	2005-04-16 05:37:15.771136184 +0100
+@@ -5,11 +5,17 @@
+ #include"rect.h"
+ 
+ struct Surface : public SDL_Surface {
++	// get a pointer to the first pixel of a rect
+ 	char* mem(const Rect& r) {
+-		return (char*)(pixels) + r.ty * pitch + r.lx * format->BytesPerPixel;
++		int ty = (r.ty >= 0) ? r.ty : 0;
++		int lx = (r.lx >= 0) ? r.lx : 0;
++		return (char*)(pixels) + ty * pitch + lx * format->BytesPerPixel;
+ 	}
++	// get a pointer to the last pixel
+ 	char* mem_end(const Rect& r) {
+-		return (char*)(pixels) + (r.by-1) * pitch + r.rx * format->BytesPerPixel;
++		int by = (r.by >= 0) ? r.by : 0;
++		int rx = (r.rx >= 0) ? r.rx : 0;
++		return (char*)(pixels) + (by-1) * pitch + rx * format->BytesPerPixel;
+ 	}
+ };
+ 

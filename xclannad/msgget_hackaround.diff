@@ -1,0 +1,23 @@
+--- clean/xclannad/music/music.c	2005-04-06 06:04:05.000000000 +0100
++++ shish/xclannad/music/music.c	2005-04-12 23:39:04.456702056 +0100
+@@ -583,6 +583,9 @@
+ int mus_init() {
+ 	DSPINFO info; int i;
+ 	
++	// FIXME: This runs OK 16 times, then on the 17th time it says
++	// "msgget No space left on device" -- it seems that only 16
++	// queues are allowed and they aren't being cleaned up properly
+ 	if (0 > (svrIPC_Music = msgget(IPC_PRIVATE, IPC_CREAT|0600))) { 
+ 		fprintf(stderr, "msgget %s\n", strerror(errno));
+ 		return NG;
+@@ -1024,7 +1027,9 @@
+ }
+ 
+ int mus_mixer_get_default_level(int device) {
+-	return state->mixer_default_level[device];
++	// FIXME: state is null when msgget(IPC_CREATE) fails,
++	// this _hides_ the bug, but doesn't fix it.
++	return state ? state->mixer_default_level[device] : 0;
+ }
+ 
+ #if FreeBSD_PTHREAD_ERROR

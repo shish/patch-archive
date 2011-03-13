@@ -1,0 +1,11 @@
+--- /home/shish/src/key/clean/xclannad/system/file.cc	2005-04-06 06:04:05.000000000 +0100
++++ /home/shish/src/key/shish/xclannad/system/file.cc	2005-04-14 05:48:33.521695416 +0100
+@@ -110,7 +110,7 @@
+ 	if (aname[0] == '\0') {arcname=new char[1]; arcname[0]='\0';return;} // NULFILE
+ 	/* ディレクトリか否かのチェック */
+ 	if (stat(aname,&sb) == -1) { /* error */
+-		perror("stat");
++		printf("ArcFile : file '%s' not found\n", aname);
+ 	}
+ 	if ( (sb.st_mode&S_IFMT) == S_IFDIR) {
+ 		int l = strlen(aname);

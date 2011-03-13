@@ -1,0 +1,70 @@
+--- clean/xclannad/scn2k/scn2k_impl.cc	2005-04-06 06:04:05.000000000 +0100
++++ shish/xclannad/scn2k/scn2k_impl.cc	2005-04-14 04:21:40.148248648 +0100
+@@ -57,7 +57,7 @@
+ bool Scn2k::OpenScript(int new_scn_number, int call_no) {
+ 	int old_scn_number = scn_number;
+ 	int old_scn_pt = script - script_start;
+-	int scn_pt = 0;
++	int scn_pt = 0, header_code = 0x0000;
+ 
+ 	if (script_data) delete[] script_data;
+ 	script_data = 0;
+@@ -68,25 +68,35 @@
+ 	char fname[1024];
+ 	sprintf(fname, "SEEN%04d.TXT", new_scn_number);
+ 	ARCINFO* info = file_searcher.Find(FILESEARCH::SCN, fname, "");
+-	if (info == 0) goto err;
+-	script_data = info->CopyRead();
+-	script_end = script_data + info->Size();
+-	delete info;
++	if (info) {
++		script_data = info->CopyRead();
++		script_end = script_data + info->Size();
++		delete info;
++	}
++	else {
++		fprintf(stderr, "scn %d pt %d: Cannot open scenario number %d\n", old_scn_number, old_scn_pt, scn_number);
++		fprintf(stderr, " - Can't find scene file '%s'\n", fname);
++		return false;
++	}
+ 
+ 	/* version 確認 */
+-	if (read_little_endian_int(script_data + 4) != 0x2712) {
+-		fprintf(stderr,"Invalid scenario header : scenario number %d\n",new_scn_number);
+-		goto err;
++	if ((header_code = read_little_endian_int(script_data + 4)) != 0x2712) {
++		fprintf(stderr, "scn %d pt %d: Cannot open scenario number %d\n", old_scn_number, old_scn_pt, scn_number);
++		fprintf(stderr, " - Invalid scenario header (%X, should be 0x2712) : scenario number %d\n", header_code, new_scn_number);
++		return false;
+ 	}
+-	if (read_little_endian_int(script_data) == 0x1cc) {
++	else if ((header_code = read_little_endian_int(script_data)) == 0x1cc) {
+ 		system_version = 0;
+ 		script_start = script_data + 0x1cc + read_little_endian_int(script_data+0x20) + 4;
+-	} else if (read_little_endian_int(script_data) == 0x1d0) {
++	}
++	else if ((header_code = read_little_endian_int(script_data)) == 0x1d0) {
+ 		system_version = 1;
+ 		script_start = script_data + read_little_endian_int(script_data + 0x20);
+-	} else {
+-		fprintf(stderr,"Invalid scenario header : scenario number %d\n",new_scn_number);
+-		goto err;
++	}
++	else {
++		fprintf(stderr, "scn %d pt %d: Cannot open scenario number %d\n", old_scn_number, old_scn_pt, scn_number);
++		fprintf(stderr, " - Invalid scenario header (%X, should be 0x1CC or 0x1D0) : scenario number %d\n", header_code, new_scn_number);
++		return false;
+ 	}
+ 	/* header から subroutine number とりだし */
+ 	if (call_no > 0 && call_no < 100) {
+@@ -110,10 +120,6 @@
+ 	if (script < script_start || script >= script_end) 
+ 		fprintf(stderr,"scn %d pt %d: Cannot jump to %d:%d; fall back to the top\n",old_scn_number, old_scn_pt, scn_number, scn_pt);
+ 	return true;
+-
+-err:
+-	fprintf(stderr,"scn %d pt %d: Cannot open scenario number %d\n",old_scn_number, old_scn_pt, scn_number);
+-	return false;
+ }
+ 
+ extern bool save_req, load_req; // キーボードからセーブ・ロードできるように
