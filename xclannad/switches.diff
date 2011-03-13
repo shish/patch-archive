@@ -1,20 +1,24 @@
 --- clean/xclannad/xlovesys.cc	2005-04-06 06:04:06.000000000 +0100
-+++ shish/xclannad/xlovesys.cc	2005-04-06 17:39:16.081412888 +0100
-@@ -1,4 +1,4 @@
++++ shish/xclannad/xlovesys.cc	2005-04-13 00:19:43.703880120 +0100
+@@ -1,6 +1,6 @@
 -#define ROOTPATH "/mnt/KEY/CLANNAD"
 +// #define ROOTPATH "/mnt/KEY/CLANNAD"
  // #define ROOTPATH "/home/uenok/pb"
- #define FONT "msgothic.ttc"
+-#define FONT "msgothic.ttc"
++// #define FONT "msgothic.ttc"
  	/* kochi-mincho-subst.ttf あるいは -*-*-*-r-*--24-*-*-*-*-*-jisx0208.1983-* など */
-@@ -13,6 +13,7 @@
+ 	/* TrueType Font は /usr/X11R6/lib/X11/fonts/TrueType/ などに存在する必要がある */
+ 
+@@ -13,6 +13,8 @@
  
  #include<SDL.h>
  #include<vector>
 +#include<getopt.h>
++#include<sys/stat.h>
  
  #include"system/file.h"
  #include"system/system_config.h"
-@@ -24,10 +25,53 @@
+@@ -24,23 +26,83 @@
  #include"scn2k/scn2k.h"
  #include"scn2k/scn2k_impl.h"
  
@@ -22,12 +26,14 @@
 +int main(int argc, char *argv[]) {
  	AyuSysConfig config;
 +	int opt = 0, end = 0;
-+	char cdromDevice[32] = "/dev/cdrom";
-+	char rootPath[32]    = "/mnt/KEY/CLANNAD";
-+	Uint32 videoOptions = SDL_HWSURFACE;
-+	
++	char cdromDevice[64] = "/dev/cdrom";
++	char rootPath[1024]  = "/mnt/KEY/CLANNAD";
++	char font[1024]      = "msgothic.ttc";
++	struct stat buffer;
++	Uint32 videoOptions  = SDL_HWSURFACE;
++
 +	while(1) {
-+		opt = getopt(argc, argv, "fdh?vc:r:");
++		opt = getopt(argc, argv, "fdt:c:r:vh?");
 +		if(opt == -1) {break;}
 +
 +		switch(opt) {
@@ -37,11 +43,14 @@
 +			case 'd':
 +				videoOptions |= SDL_DOUBLEBUF;
 +				break;
++			case 't':
++				strncpy(font, optarg, 1023);
++				break;
 +			case 'c':
-+				strncpy(cdromDevice, optarg, 31);
++				strncpy(cdromDevice, optarg, 63);
 +				break;
 +			case 'r':
-+				strncpy(rootPath, optarg, 31);
++				strncpy(rootPath, optarg, 1023);
 +				break;
 +			case 'v':
 +				// FIXME: "VERSION" undeclared?
@@ -54,6 +63,7 @@
 +				printf("\nUsage: %s [OPTIONS]\n\n", argv[0]);
 +				printf("  -f    : full screen mode\n");
 +				printf("  -d    : double buffer mode\n");
++				printf("  -t    : set font (typeface)\n");
 +				printf("  -c    : set CD-ROM device (default /dev/cdrom)\n");
 +				printf("  -r    : set root path (default /mnt/KEY/CLANNAD)\n");
 +				printf("  -v    : show version and exit\n");
@@ -68,15 +78,30 @@
 -	file_searcher.InitRoot(ROOTPATH);
 +	file_searcher.InitRoot(rootPath);
  	config.LoadInitFile();
++	
  int deal=0;
  const int* s = config.GetParamArray("#SHAKE.001",deal);
-@@ -38,9 +82,10 @@
+ int i; for (i=0; i<deal; i++) { printf("%d, ",s[i]);}
+ printf("shake end\n");
+ 
+-	SetFont(FONT);
++	if(stat(font, &buffer) == -1) {
++		fprintf(stderr, "Font '%s' not found\n", font);
++		return 1;
++	}
++	SetFont(font);
  
  	MuSys mu(config);
  	mu.InitMusic();
 +	mu.SetCDROMDevice(cdromDevice);
++
++	if(SDL_Init(SDL_INIT_VIDEO)) {
++		printf("Unable to init SDL: %s\n", SDL_GetError());
++	        return 1;
++	}
++	atexit(SDL_Quit);
  	
- 	SDL_Init(SDL_INIT_VIDEO);
+-	SDL_Init(SDL_INIT_VIDEO);
 -	SDL_SetVideoMode(640, 480, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
 +	SDL_SetVideoMode(640, 480, 0, videoOptions);
  	// SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
